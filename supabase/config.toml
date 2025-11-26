@@ -1,0 +1,19 @@
+project_id = "xchvfnegepsczndtyzfs"
+
+[functions.fetch-trengo-ticket]
+verify_jwt = false
+
+[functions.create-hubspot-contact]
+verify_jwt = false
+
+[functions.search-hubspot-contact]
+verify_jwt = false
+
+[functions.update-hubspot-lifecycle]
+verify_jwt = false
+
+[functions.get-hubspot-deal-stages]
+verify_jwt = false
+
+[functions.create-hubspot-deal]
+verify_jwt = false
