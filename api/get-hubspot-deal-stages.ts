@@ -1,4 +1,4 @@
-import { handleOptions, respondWithError, setCorsHeaders } from './_lib/http';
+import { handleOptions, respondWithError, setCorsHeaders } from './_lib/http.js';
 
 export default async function handler(req: any, res: any) {
   if (handleOptions(req, res)) return;
