@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import {
   Form,
@@ -22,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { fetchTrengoTicket, searchHubSpotContact as searchHubSpotContactApi, updateHubSpotLifecycle, HubSpotContact } from "@/lib/apiClient";
 
 const formSchema = z.object({
   contactEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
@@ -50,20 +50,6 @@ interface ChangeLifecycleFormProps {
   onSwitchToCreate?: () => void;
 }
 
-interface HubSpotContact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  company: string;
-  jobTitle: string;
-  lifecycleStage: string;
-  leadStatus: string;
-  createdDate: string;
-  lastModifiedDate: string;
-}
-
 export function ChangeLifecycleForm({ ticketId, onSwitchToCreate }: ChangeLifecycleFormProps) {
   const { toast } = useToast();
   const [isLoadingTicket, setIsLoadingTicket] = useState(false);
@@ -83,61 +69,51 @@ export function ChangeLifecycleForm({ ticketId, onSwitchToCreate }: ChangeLifecy
   useEffect(() => {
     if (!ticketId) return;
 
-    const fetchTicketData = async () => {
-      setIsLoadingTicket(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('fetch-trengo-ticket', {
-          body: { ticketId },
-        });
+      const fetchTicketData = async () => {
+        setIsLoadingTicket(true);
+        try {
+          const data = await fetchTrengoTicket(ticketId);
 
-        if (error) throw error;
+          if (data?.email) {
+            form.setValue('contactEmail', data.email);
+          }
+          if (data?.phone) {
+            form.setValue('contactPhone', data.phone);
+          }
 
-        // Populate email and phone from ticket data
-        if (data?.email) {
-          form.setValue('contactEmail', data.email);
+          if (data?.email || data?.phone) {
+            await searchHubSpotContact(data.email, data.phone);
+          }
+
+          toast({
+            title: "Ticket data loaded",
+            description: "Contact information has been pre-filled from the ticket.",
+          });
+        } catch (error) {
+          console.error('Error fetching ticket data:', error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to fetch ticket data.",
+          });
+        } finally {
+          setIsLoadingTicket(false);
         }
-        if (data?.phone) {
-          form.setValue('contactPhone', data.phone);
-        }
-
-        // Search for contact in HubSpot
-        if (data?.email || data?.phone) {
-          await searchHubSpotContact(data.email, data.phone);
-        }
-
-        toast({
-          title: "Ticket data loaded",
-          description: "Contact information has been pre-filled from the ticket.",
-        });
-      } catch (error) {
-        console.error('Error fetching ticket data:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch ticket data.",
-        });
-      } finally {
-        setIsLoadingTicket(false);
-      }
-    };
+      };
 
     fetchTicketData();
   }, [ticketId, form, toast]);
 
-  const searchHubSpotContact = async (email?: string, phone?: string) => {
-    setIsSearchingContact(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('search-hubspot-contact', {
-        body: { email, phone },
-      });
+    const searchHubSpotContact = async (email?: string, phone?: string) => {
+      setIsSearchingContact(true);
+      try {
+        const data = await searchHubSpotContactApi(email, phone);
 
-      if (error) throw error;
-
-      if (data?.success && data?.contact) {
-        setHubspotContact(data.contact);
-        setContactNotFound(false);
-        setCurrentLifecycleStage(data.contact.lifecycleStage);
-        // Auto-populate the lifecycle stage field
+        if (data?.success && data?.contact) {
+          setHubspotContact(data.contact);
+          setContactNotFound(false);
+          setCurrentLifecycleStage(data.contact.lifecycleStage);
+          // Auto-populate the lifecycle stage field
         if (data.contact.lifecycleStage) {
           form.setValue('lifecycleStage', data.contact.lifecycleStage);
         }
@@ -167,20 +143,16 @@ export function ChangeLifecycleForm({ ticketId, onSwitchToCreate }: ChangeLifecy
     try {
       form.clearErrors();
       
-      const { data: result, error } = await supabase.functions.invoke('update-hubspot-lifecycle', {
-        body: {
+        const result = await updateHubSpotLifecycle({
           email: data.contactEmail,
           phone: data.contactPhone,
           lifecycleStage: data.lifecycleStage,
-        },
-      });
+        });
 
-      if (error) throw error;
-
-      if (result?.success) {
-        toast({
-          title: "Lifecycle Updated",
-          description: `Contact lifecycle changed to ${selectedStage?.label}.`,
+        if (result?.success) {
+          toast({
+            title: "Lifecycle Updated",
+            description: `Contact lifecycle changed to ${selectedStage?.label}.`,
         });
         
         // Refresh the contact data
