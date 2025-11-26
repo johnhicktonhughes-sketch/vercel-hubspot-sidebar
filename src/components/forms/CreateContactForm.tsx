@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { createHubSpotContact, fetchTrengoTicket } from "@/lib/apiClient";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -54,36 +54,22 @@ export function CreateContactForm({ ticketId }: CreateContactFormProps) {
       try {
         console.log('Fetching ticket data for:', ticketId);
         
-        const { data, error } = await supabase.functions.invoke('fetch-trengo-ticket', {
-          body: { ticketId },
+        const data = await fetchTrengoTicket(ticketId);
+
+        console.log('Ticket data received:', data);
+        form.reset({
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          company: data.company || "",
+          jobTitle: "",
         });
 
-        if (error) {
-          console.error('Error fetching ticket:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load ticket data from Trengo",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (data) {
-          console.log('Ticket data received:', data);
-          form.reset({
-            firstName: data.firstName || "",
-            lastName: data.lastName || "",
-            email: data.email || "",
-            phone: data.phone || "",
-            company: data.company || "",
-            jobTitle: "",
-          });
-          
-          toast({
-            title: "Ticket Data Loaded",
-            description: "Contact information pre-filled from Trengo ticket",
-          });
-        }
+        toast({
+          title: "Ticket Data Loaded",
+          description: "Contact information pre-filled from Trengo ticket",
+        });
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -103,26 +89,14 @@ export function CreateContactForm({ ticketId }: CreateContactFormProps) {
     try {
       console.log("Creating contact:", data);
       
-      const { data: result, error } = await supabase.functions.invoke('create-hubspot-contact', {
-        body: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          company: data.company,
-          jobTitle: data.jobTitle,
-        },
+      const result = await createHubSpotContact({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        jobTitle: data.jobTitle,
       });
-
-      if (error) {
-        console.error('Error creating contact:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create contact in HubSpot",
-          variant: "destructive",
-        });
-        return;
-      }
 
       if (result?.success) {
         toast({

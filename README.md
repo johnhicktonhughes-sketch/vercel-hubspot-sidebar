@@ -62,7 +62,15 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/fa40a9b0-5058-4ca9-be0a-c9df6bcb3d44) and click on Share -> Publish.
+This project now ships its backend logic as Vercel Node.js functions (see the `/api` directory). To deploy on Vercel:
+
+1. Add the following **server-side** environment variables in your Vercel project settings (Environment Variables section):
+   - `HUBSPOT_API_KEY`
+   - `HUBSPOT_DEALS_API_KEY`
+   - `TRENGO_API_KEY`
+2. Run `vercel` or connect the repository to Vercel so it builds and deploys automatically. The frontend calls the `/api/*` routes directly, keeping these secrets on the server.
+
+For local development with the serverless routes, use `vercel dev` so both Vite and the API routes run together with your `.env` values.
 
 ## Can I connect a custom domain to my Lovable project?
 
