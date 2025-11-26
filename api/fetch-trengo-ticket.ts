@@ -1,4 +1,4 @@
-import { handleOptions, parseJsonBody, respondWithError, setCorsHeaders } from './_lib/http';
+import { handleOptions, parseJsonBody, respondWithError, setCorsHeaders } from './_lib/http.js';
 
 interface TrengoTicketResponse {
   contact?: {
