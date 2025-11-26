@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, TriangleAlert } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -48,6 +49,7 @@ export function CreateDealForm({ ticketId }: CreateDealFormProps) {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<string>("");
   const [dealStages, setDealStages] = useState<DealStage[]>([]);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [contactInfo, setContactInfo] = useState<{ email: string; company: string } | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +69,7 @@ export function CreateDealForm({ ticketId }: CreateDealFormProps) {
         setIsLoadingStages(true);
         try {
           const data = await getDealPipelines();
+          setPipelineError(null);
 
           if (data?.success && data?.pipelines) {
             setPipelines(data.pipelines);
@@ -81,6 +84,9 @@ export function CreateDealForm({ ticketId }: CreateDealFormProps) {
           }
         } catch (error) {
           console.error('Error fetching deal stages:', error);
+          setPipelineError(
+            "We couldn't load your HubSpot deal pipelines. Check your HubSpot Deals API key in Vercel or try again."
+          );
           const fallbackPipeline = {
             id: 'default',
             label: 'Sales Pipeline',
@@ -196,6 +202,16 @@ export function CreateDealForm({ ticketId }: CreateDealFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {pipelineError && (
+          <Alert variant="destructive">
+            <TriangleAlert className="h-4 w-4" />
+            <AlertTitle>Pipeline unavailable</AlertTitle>
+            <AlertDescription className="text-sm">
+              {pipelineError}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {contactInfo && (
           <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
             <h3 className="font-semibold text-foreground">Contact Information</h3>
@@ -286,7 +302,11 @@ export function CreateDealForm({ ticketId }: CreateDealFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Deal Stage *</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={!selectedPipeline || dealStages.length === 0}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select stage..." />
